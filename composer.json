@@ -1,0 +1,15 @@
+{
+    "name": "aaukt/accelerando",
+    "description": "Speed up Satis repositories",
+    "homepage": "https://github.com/aaukt/accelerando",
+    "type": "library",
+    "require": {
+        "symfony/console": "v2.5.0",
+        "symfony/filesystem": "v2.5.0"
+    },
+    "bin": ["bin/accelerando"],
+    "autoload": {
+        "psr-0": { "Aaukt\\Accelerando": "src/" }
+    },
+    "license": "MIT"
+}
