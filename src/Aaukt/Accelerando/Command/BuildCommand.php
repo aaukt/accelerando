@@ -9,6 +9,8 @@ use Symfony\Component\Filesystem\Filesystem;
 
 class BuildCommand extends BaseCommand
 {
+    protected $url;
+
     protected function configure()
     {
         $this
@@ -34,7 +36,8 @@ EOT
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $configFile = $input->getArgument('file');
-        $config = $this->readJson($configFile);        
+        $config = $this->readJson($configFile);
+        $this->url = rtrim($config['homepage'], '/');
 
         if (!$outputDir = $input->getArgument('output-dir')) {
             $outputDir = isset($config['output-dir']) ? $config['output-dir'] : null;
@@ -135,7 +138,7 @@ EOT
         return $this->writeAndHash($filename, $content);
     }
     
-    protected function dumpSinglePackageJson($filename, $packageName, $packageConfig, OutputInterface $output)
+    protected function dumpSinglePackageJson($filename, $packageName, $packageConfig)
     {
         $filePrefix = $filename . $packageName;
         $dir = dirname($filePrefix);
@@ -154,7 +157,7 @@ EOT
     {
         $repo = array(
             'packages'          => array(),
-            'providers-url'     => '/p/%package%$%hash%.json',
+            'providers-url'     => $this->getPath($this->url . '/p/%package%$%hash%.json'),
             'provider-includes' => array(
                 'p/provider-active$' . $providersFileHash . '.json' => array(
                     'sha256' => $providersFileHash
@@ -164,5 +167,10 @@ EOT
         
         $output->writeln('<info>Writing packages.json</info>');
         $this->writeJson($filename, $repo);
+    }
+
+    protected function getPath($url)
+    {
+        return preg_replace('{(?:https?://[^/]+)(.*)}i', '$1', $url);
     }
 }
