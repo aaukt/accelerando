@@ -73,7 +73,7 @@ EOT
         $providersFile = $this->dumpProvidersJson($buildDir . 'provider-active', $providers, $output);
         $providersFileHash = hash_file('sha256', $providersFile);
         
-        $fileSystem->copy($outputDir . '/packages.json', $outputDir . '/packages-all.json');
+        $fileSystem->copy($outputDir . '/packages.json', $outputDir . '/packages-all.json', true);
         $this->dumpPackagesJson($filename, $providersFileHash, $output);
         $fileSystem->remove($outputDir . '/p/');
         $fileSystem->rename($buildDir, $outputDir . '/p/', true);
