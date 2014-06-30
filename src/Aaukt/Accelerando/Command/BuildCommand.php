@@ -48,15 +48,14 @@ EOT
         }
         
         $fileSystem = new Filesystem();
-        
-        if ($fileSystem->exists($outputDir . '/packages-all.json')) {
-            $fileSystem->copy($outputDir . '/packages-all.json', $outputDir . '/packages.json', true);
-        }
 
         $buildDir = $outputDir . '/_p/';
         $filename = $outputDir . '/packages.json';
         
-        $packages = $this->loadDumpedPackages($filename);
+        if (false === ($packages = $this->loadDumpedPackages($filename))) {
+            $output->writeln('<info>Repository already optimized</info>');
+            return 0;
+        }
         $providers = array();
         $uid = 0;
         
@@ -73,8 +72,12 @@ EOT
         $providersFile = $this->dumpProvidersJson($buildDir . 'provider-active', $providers, $output);
         $providersFileHash = hash_file('sha256', $providersFile);
         
+        // backup original package.json
         $fileSystem->copy($outputDir . '/packages.json', $outputDir . '/packages-all.json', true);
+        
         $this->dumpPackagesJson($filename, $providersFileHash, $output);
+        
+        // move build folder to target
         $fileSystem->remove($outputDir . '/p/');
         $fileSystem->rename($buildDir, $outputDir . '/p/', true);
     }
@@ -113,6 +116,10 @@ EOT
         $packages = array();
         $packagesJson = $this->readJson($filename);
         $dirName  = dirname($filename);
+        
+        if (!empty($packagesJson['provider-includes'])) {
+            return false;
+        }
 
         $jsonIncludes = isset($packagesJson['includes']) && is_array($packagesJson['includes'])
             ? $packagesJson['includes']
