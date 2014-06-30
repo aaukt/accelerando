@@ -93,7 +93,7 @@ EOT
     protected function writeJson($filename, array $content)
     {
         try {
-            file_put_contents($filename, json_encode($content));
+            file_put_contents($filename, json_encode($content, JSON_PRETTY_PRINT));
         } catch (\Exception $e) {
             throw new \RuntimeException('Could not write ' . $filename . PHP_EOL . PHP_EOL . $e->getMessage());
         }
