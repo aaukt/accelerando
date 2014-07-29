@@ -46,42 +46,66 @@ EOT
         if (null === $outputDir) {
             throw new \InvalidArgumentException('The output dir must be specified as second argument or be configured inside '.$input->getArgument('file'));
         }
-        
+
         $fileSystem = new Filesystem();
 
         $buildDir = $outputDir . '/_p/';
         $filename = $outputDir . '/packages.json';
-        
+
         if (false === ($packages = $this->loadDumpedPackages($filename))) {
             $output->writeln('<info>Repository already optimized</info>');
             return 0;
         }
         $providers = array();
         $uid = 0;
-        
+
         $output->writeln('<info>Writing single packages</info>');
-        foreach ($packages as $packageName => $packageConfig) {
-            foreach ($packageConfig as $version => &$versionConfig) {
-                $packageConfig[$version]['uid'] = $uid++;
+
+        // prepopulate uid
+        foreach ($packages as &$packageConfig) {
+            foreach ($packageConfig as &$versionConfig) {
+                $versionConfig['uid'] = $uid++;
             }
-            $packageFile = $this->dumpSinglePackageJson($buildDir, $packageName, $packageConfig, $output);
-            $packageFileHash = hash_file('sha256', $packageFile);       
+        }
+
+        foreach ($packages as $packageName => $packageConfig) {
+            $dumpPackages = $this->findReplacee($packages, $packageName);
+
+            $packageFile = $this->dumpSinglePackageJson($buildDir, $packageName, array_merge($dumpPackages, array($packageName => $packageConfig)));
+            $packageFileHash = hash_file('sha256', $packageFile);
             $providers[$packageName] = array('sha256' => $packageFileHash);
         }
-        
+
         $providersFile = $this->dumpProvidersJson($buildDir . 'provider-active', $providers, $output);
         $providersFileHash = hash_file('sha256', $providersFile);
-        
+
         // backup original package.json
         $fileSystem->copy($outputDir . '/packages.json', $outputDir . '/packages-all.json', true);
-        
+
         $this->dumpPackagesJson($filename, $providersFileHash, $output);
-        
+
         // move build folder to target
         $fileSystem->remove($outputDir . '/p/');
         $fileSystem->rename($buildDir, $outputDir . '/p/', true);
     }
-    
+
+    protected function findReplacee($packages, $replaced)
+    {
+        $replacees = array();
+        foreach ($packages as $packageName => $packageConfig) {
+            foreach ($packageConfig as $versionConfig) {
+                if (!empty($versionConfig['replace'])) {
+                    if (in_array($replaced, array_keys($versionConfig['replace']))) {
+                        $replacees[$packageName] = $packageConfig;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $replacees;
+    }
+
     protected function readJson($filename)
     {
         try {
@@ -92,7 +116,7 @@ EOT
 
         return $content;
     }
-    
+
     protected function writeJson($filename, array $content)
     {
         try {
@@ -101,7 +125,7 @@ EOT
             throw new \RuntimeException('Could not write ' . $filename . PHP_EOL . PHP_EOL . $e->getMessage());
         }
     }
-    
+
     protected function writeAndHash($filename, array $content)
     {
         $this->writeJson($filename, $content);
@@ -110,13 +134,13 @@ EOT
         rename($filename, $filenameWithHash);
         return $filenameWithHash;
     }
-    
+
     protected function loadDumpedPackages($filename)
     {
         $packages = array();
         $packagesJson = $this->readJson($filename);
         $dirName  = dirname($filename);
-        
+
         if (!empty($packagesJson['provider-includes'])) {
             return false;
         }
@@ -130,36 +154,36 @@ EOT
             $jsonPackages = isset($jsonInclude['packages']) && is_array($jsonInclude['packages'])
                 ? $jsonInclude['packages']
                 : array();
-                
+
                 $packages = $packages + $jsonPackages;
         }
 
         return $packages;
     }
-    
+
     protected function dumpProvidersJson($filename, $providers, OutputInterface $output)
     {
         $content = array('providers' => $providers);
-        
+
         $output->writeln('<info>Writing providers.json</info>');
         return $this->writeAndHash($filename, $content);
     }
-    
-    protected function dumpSinglePackageJson($filename, $packageName, $packageConfig)
+
+    protected function dumpSinglePackageJson($filename, $packageName, $packages)
     {
         $filePrefix = $filename . $packageName;
         $dir = dirname($filePrefix);
         if (!is_dir($dir)) {
             mkdir($dir, 0777, true);
         }
-        
+
         $content = array(
-            'packages' => array($packageName => $packageConfig)
+            'packages' => $packages
         );
-        
+
         return $this->writeAndHash($filePrefix, $content);
     }
-    
+
     protected function dumpPackagesJson($filename, $providersFileHash, OutputInterface $output)
     {
         $repo = array(
@@ -171,7 +195,7 @@ EOT
                 )
             )
         );
-        
+
         $output->writeln('<info>Writing packages.json</info>');
         $this->writeJson($filename, $repo);
     }
