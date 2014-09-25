@@ -62,10 +62,11 @@ EOT
         $output->writeln('<info>Writing single packages</info>');
 
         // prepopulate uid
-        foreach ($packages as &$packageConfig) {
+        foreach ($packages as $packageName => $packageConfig) {
             foreach ($packageConfig as &$versionConfig) {
                 $versionConfig['uid'] = $uid++;
             }
+            $packages[$packageName] = $packageConfig;
         }
 
         foreach ($packages as $packageName => $packageConfig) {
