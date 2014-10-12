@@ -4,6 +4,7 @@
     "homepage": "https://github.com/aaukt/accelerando",
     "type": "library",
     "require": {
+        "php": ">=5.4.0",
         "symfony/console": "v2.5.0",
         "symfony/filesystem": "v2.5.0"
     },
